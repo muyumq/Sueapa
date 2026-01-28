@@ -1,0 +1,47 @@
+services:
+  # 1. Database (MySQL)
+  mysql-db:
+    image: mysql:8.0
+    container_name: mysql-container
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: mycatalog
+    ports:
+      - "3306:3306"
+
+  # 2. Search Engine (OpenSearch)
+  opensearch:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch-container
+    environment:
+      - discovery.type=single-node
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=StrongPass123!
+    ports:
+      - "9200:9200"
+
+  # 3. Backend (Spring Boot)
+  backend:
+    build: ./backend  # สั่งให้สร้าง Image จากโฟลเดอร์ backend
+    container_name: backend-container
+    ports:
+      - "8080:8080"
+    environment:
+      # สังเกตตรงนี้! เราใช้ชื่อ service (mysql-db, opensearch) แทน IP
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/mycatalog
+      OPENSEARCH_HOST: opensearch:9200
+    depends_on:
+      - mysql-db
+      - opensearch
+    volumes:
+      # [โฟลเดอร์เครื่องจริง] : [โฟลเดอร์ใน Container]
+      - ./uploads:/app/uploads
+
+  # 4. Frontend (Angular)
+  frontend:
+    build: ./frontend # สั่งให้สร้าง Image จากโฟลเดอร์ frontend
+    container_name: frontend-container
+    ports:
+      - "80:80"       # เข้าเว็บผ่าน port 80 (http://localhost)
+    depends_on:
+      - backend
